@@ -10,7 +10,7 @@ import soundfile as sf
 # and extract_words.py.
 # ---------------------------------------------------------------------------
 
-LIBRISPEECH_ROOT = r"C:\Users\Shotk\OneDrive\Documents\Education\Spring2026\Machine Learning\Project\Speech\LibriSpeech"
+LIBRISPEECH_ROOT = r""
 SAMPLE_RATE = 16000  # LibriSpeech native sample rate
 
 

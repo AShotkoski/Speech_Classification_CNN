@@ -5,8 +5,8 @@ from collections import Counter
 #   all_words.txt    - every word occurrence, one per line
 #   word_counts.txt  - unique words with frequency counts, sorted descending
 
-LIBRISPEECH_ROOT = r"C:\Users\Shotk\OneDrive\Documents\Education\Spring2026\Machine Learning\Project\Speech\LibriSpeech"
-OUTPUT_DIR = r"C:\Users\Shotk\OneDrive\Documents\Education\Spring2026\Machine Learning\Project\Speech"
+LIBRISPEECH_ROOT = r""
+OUTPUT_DIR = r""
 
 
 def main():

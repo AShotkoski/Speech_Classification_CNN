@@ -6,7 +6,7 @@ import os
 # This script extracts individual words from the LibriSpeech dataset using the
 # alignment files, then plays each word's audio with its label printed.
 
-librispeech_root = r"C:\Users\Shotk\OneDrive\Documents\Education\Spring2026\Machine Learning\Project\Speech\LibriSpeech"
+librispeech_root = r""
 
 SAMPLE_RATE = 16000  # Sampling rate of LibriSpeech
 
