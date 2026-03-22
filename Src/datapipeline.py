@@ -125,3 +125,10 @@ class LibriSpeechWordDataset(Dataset):
     def get_vocab(self):
         return dict(self.vocab)
 
+def collate_fn(batch):
+    """Pad waveforms to the longest in the batch."""
+    waveforms, labels = zip(*batch)
+    lengths = torch.tensor([w.shape[-1] for w in waveforms])
+    padded = pad_sequence(waveforms, batch_first=True, padding_value=0.0)
+    labels = torch.tensor(labels)
+    return padded, labels, lengths
