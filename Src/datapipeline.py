@@ -21,10 +21,14 @@ class LibriSpeechWordDataset(Dataset):
     def __init__(self, root, splits, top_k=None):
         """
         root:      path to the LibriSpeech directory
-        splits:    list of subset names, e.g. ["train-clean-100"]
+        splits:    list of subset names, e.g. ["train-clean-100"], or ["all"] for all available splits
         top_k:     if set, only keep the K most frequent words (rest are dropped)
         """
         self.root = root
+
+        # Handle all option to include all available splits
+        if "all" in splits:
+            splits = [d for d in os.listdir(root) if os.path.isdir(os.path.join(root, d))]
 
         # collect every word occurrence and count frequencies
         # using the billion nested for loops because of how the dataset is organized
