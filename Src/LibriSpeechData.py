@@ -3,6 +3,7 @@ from collections import Counter
 
 import torch
 import torchaudio
+from torchaudio.transforms import MelSpectrogram
 from torch.utils.data import Dataset
 from torch.nn.utils.rnn import pad_sequence
 
@@ -101,6 +102,7 @@ class LibriSpeechWordDataset(Dataset):
             if word in allowed
         ]
 
+
     def __len__(self):
         return len(self.entries)
 
@@ -122,9 +124,11 @@ class LibriSpeechWordDataset(Dataset):
         )
         # Squeeze to 1-D (mono)
         waveform = waveform.squeeze(0)
+        mel_spec_transform = MelSpectrogram(SAMPLE_RATE, n_mels=64)
+        mel_spec = mel_spec_transform(waveform)
 
         label = self.vocab[word]
-        return waveform, label
+        return mel_spec, label
 
     def get_vocab(self):
         return dict(self.vocab)
