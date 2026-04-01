@@ -27,6 +27,8 @@ class LibriSpeechWordDataset(Dataset):
         top_k:     if set, only keep the K most frequent words (rest are dropped)
         """
         self.root = root
+        # Cache the sample rate
+        self.sample_rate = SAMPLE_RATE
 
         # Handle all option to include all available splits
         if "all" in splits:
