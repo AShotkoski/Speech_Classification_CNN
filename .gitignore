@@ -5,3 +5,4 @@ data/
 unaligned.txt
 LibriSpeech-Alignments.zip
 *.pyc
+Speech.code-workspace
