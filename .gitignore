@@ -4,3 +4,4 @@ LibriSpeech/
 data/
 unaligned.txt
 LibriSpeech-Alignments.zip
+*.pyc

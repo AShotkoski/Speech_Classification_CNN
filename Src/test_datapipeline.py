@@ -12,26 +12,11 @@ ds = LibriSpeechData.LibriSpeechWordDataset(
     top_k = 100
 )
 
-#loader = DataLoader(ds, batch_size=4, shuffle=True, collate_fn=LibriSpeechData.collate_fn)
+loader = DataLoader(ds, batch_size=4, shuffle=True, collate_fn=LibriSpeechData.collate_fn)
 
-#features, labels, lengths = next(iter(loader))
-#print("Features shape:", features.shape)
-#print("Labels shape:", labels.shape)
-#print("lengths: ", lengths)
-
-print(f"Dataset size: {len(ds)}")
-
-mel_spec1, label1 = ds[-1]
-mel_spec2, label2 = ds[-5]
-
-fig, axes = plt.subplots(1, 2, figsize=(16, 4))
+features, labels = next(iter(loader))
+print("Features shape:", features.shape)
+print("Labels shape:", labels.shape)
 
 
-im1 = axes[0].imshow(mel_spec1, origin='lower', aspect='auto', cmap='magma')
-axes[0].set_title('Mel Spectrogram (ds[-1])')
-
-im2 = axes[1].imshow(mel_spec2, origin='lower', aspect='auto', cmap='magma')
-axes[1].set_title('Mel Spectrogram (ds[-5])')
-
-plt.show()
-
+print(f"label {[ds.word_at(label.item()) for label in labels]}")

@@ -6,6 +6,7 @@ import torchaudio
 from torchaudio.transforms import MelSpectrogram
 from torch.utils.data import Dataset
 from torch.nn.utils.rnn import pad_sequence
+import torchaudio.transforms as T
 
 # All of the librispeech dataset uses 16k hz sample rate
 SAMPLE_RATE = 16000
@@ -108,10 +109,7 @@ class LibriSpeechWordDataset(Dataset):
 
     def __getitem__(self, idx):
         """
-        Return waveform at a given index 
-        TODO RETURN A MEL SPECTROGRAM instead of raw 1D waveform
-        Returns a tensor of the waveform and the word label
-
+        Returns a Mel-Spectrogram at a given index 
         """
         audio_path, start_sec, end_sec, word = self.entries[idx]
 
@@ -132,11 +130,26 @@ class LibriSpeechWordDataset(Dataset):
 
     def get_vocab(self):
         return dict(self.vocab)
+    def word_at(self, idx):
+        for word, word_idx in self.vocab.items():
+            if word_idx == idx:
+                return word
+        raise KeyError(f"word index {idx} not in vocabulary.")
 
 def collate_fn(batch):
-    """Pad waveforms to the longest in the batch."""
-    waveforms, labels = zip(*batch)
-    lengths = torch.tensor([w.shape[-1] for w in waveforms])
-    padded = pad_sequence(waveforms, batch_first=True, padding_value=0.0)
-    labels = torch.tensor(labels)
-    return padded, labels, lengths
+    """Pad spectrograms but padding the last dimension."""
+    spectrograms, labels = zip(*batch)
+
+    max_time_frames = max([spec.shape[-1] for spec in spectrograms])
+
+    padded_spectrograms = []
+    for spec in spectrograms:
+        pad_amount = max_time_frames - spec.shape[-1]
+
+        padded_spec = torch.nn.functional.pad(spec, (0,pad_amount))
+        padded_spectrograms.append(padded_spec)
+
+    batch_spectrograms = torch.stack(padded_spectrograms)
+    batch_labels = torch.tensor(labels)
+
+    return batch_spectrograms, batch_labels
