@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
 ds = LibriSpeechDataset.LibriSpeechWordDataset(
-    root = os.path.join(script_dir, "..\\LibriSpeech"),
+    root = os.path.join(script_dir, "..\LibriSpeech"),
     splits = ["dev-clean"],
     top_k = 1000,
 )

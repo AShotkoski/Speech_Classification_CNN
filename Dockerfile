@@ -1,7 +1,7 @@
 #Dockerfile, Image, Container
 FROM python:3.14.3
 
-WORKDIR /Src
+WORKDIR /Speech_Classification_CNN
 
 RUN pip install torch
 RUN pip install torchaudio
@@ -12,4 +12,4 @@ RUN pip install scikit-learn
 
 COPY . .
 
-CMD ["python", ".main.py"]
+CMD ["python", "main.py"]

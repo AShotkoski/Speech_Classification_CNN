@@ -1,8 +1,5 @@
 .env
-*.flac
 *.wav
-LibriSpeech/
-data/
 unaligned.txt
 LibriSpeech-Alignments.zip
 .git
