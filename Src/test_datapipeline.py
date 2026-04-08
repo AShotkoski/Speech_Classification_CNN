@@ -8,7 +8,7 @@ from utils import plot_log_mel_spectrogram
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
 ds = LibriSpeechDataset.LibriSpeechWordDataset(
-    root = os.path.join(script_dir, "..\\LibriSpeech"),
+    root = os.path.join(script_dir, "../LibriSpeech"),
     splits = ["dev-clean"],
     top_k = 100
 )

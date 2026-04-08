@@ -6,3 +6,4 @@ LibriSpeech-Alignments.zip
 .gitignore
 .vscode
 venv
+/LibriSpeech

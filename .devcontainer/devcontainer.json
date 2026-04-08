@@ -16,6 +16,10 @@
 			"ms-python.debugpy"
 		  ]
 		}
-	  }
+	  },
+	  
+	  "mounts": [
+		"source=${localWorkspaceFolder}/LibriSpeech,target=/Speech_Classification_CNN/LibriSpeech,type=bind"
+	  ]
 }
 
