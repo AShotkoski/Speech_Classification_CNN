@@ -8,7 +8,11 @@ import torch.nn as nn
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
+# Number of words in dataset to keep, sorted by frequency
 TOP_K = 50
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using {device}")
 
 ds = LibriSpeechDataset.LibriSpeechWordDataset(
     root = os.path.join(script_dir, "../LibriSpeech"),
@@ -21,7 +25,7 @@ loader = DataLoader(ds, batch_size=4, shuffle=True, collate_fn=LibriSpeechDatase
 
 print(f"Dataset size: {len(ds)}")
 
-net = CNN.net(TOP_K)
+net = CNN.net(TOP_K).to(device)
 
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(net.parameters(), lr = 0.001, momentum= 0.9)
@@ -29,7 +33,7 @@ optimizer = optim.SGD(net.parameters(), lr = 0.001, momentum= 0.9)
 for epoch in range(2):
     running_loss = 0
     for i, data in enumerate(loader, 0):
-        inputs, labels = data
+        inputs, labels = data[0].to(device), data[1].to(device)
 
         # zero param gradients
         optimizer.zero_grad()

@@ -1,4 +1,3 @@
-#Dockerfile, Image, Container
 FROM python:3.11-bullseye
 
 WORKDIR /Speech_Classification_CNN
@@ -17,7 +16,9 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
 
 RUN pip install --upgrade pip
 
-RUN pip install torch torchaudio torchcodec numpy matplotlib scikit-learn 
+RUN pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu128
+
+RUN pip install numpy matplotlib scikit-learn soundfile
 
 COPY . .
 

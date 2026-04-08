@@ -7,9 +7,11 @@ from torchaudio.transforms import MelSpectrogram
 from torch.utils.data import Dataset
 from torch.nn.utils.rnn import pad_sequence
 import torchaudio.transforms as T
+import soundfile as sf
 
 # All of the librispeech dataset uses 16k hz sample rate
 SAMPLE_RATE = 16000
+BACKEND = 'soundfile'
 
 # Directory architecture for the dataset is 
 # split->speakerID->bookID->list of flac files and speakerID-bookID.alignment.txt if an alignment exists
@@ -110,25 +112,25 @@ class LibriSpeechWordDataset(Dataset):
         return len(self.entries)
 
     def __getitem__(self, idx):
-        """
-        Returns a Mel-Spectrogram at a given index 
-        """
-        audio_path, start_sec, end_sec, word = self.entries[idx]
+            """
+            Returns a Mel-Spectrogram at a given index 
+            """
+            audio_path, start_sec, end_sec, word = self.entries[idx]
 
-        start_sample = int(start_sec * SAMPLE_RATE)
-        end_sample = int(end_sec * SAMPLE_RATE)
-        num_frames = end_sample - start_sample
+            start_sample = int(start_sec * SAMPLE_RATE)
+            end_sample = int(end_sec * SAMPLE_RATE)
+            num_frames = end_sample - start_sample
 
-        waveform, _ = torchaudio.load(
-            audio_path, frame_offset=start_sample, num_frames=num_frames
-        )
-        # Squeeze to 1-D (mono)
-        waveform = waveform.squeeze(0)
-        mel_spec_transform = MelSpectrogram(SAMPLE_RATE, n_mels=64)
-        mel_spec = mel_spec_transform(waveform)
+            data, _ = sf.read(audio_path, start=start_sample, frames=num_frames)
+            
+            # Convert the soundfile NumPy array directly into a PyTorch tensor
+            waveform = torch.from_numpy(data).float()
 
-        label = self.vocab[word]
-        return mel_spec, label
+            mel_spec_transform = MelSpectrogram(SAMPLE_RATE, n_mels=64)
+            mel_spec = mel_spec_transform(waveform)
+
+            label = self.vocab[word]
+            return mel_spec, label
 
     def get_vocab(self):
         return dict(self.vocab)

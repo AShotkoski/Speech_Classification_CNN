@@ -1,8 +1,8 @@
-#Dockerfile, Image, Container
 FROM python:3.11-bullseye
 
 WORKDIR /Speech_Classification_CNN
 
+# The exact same Linux audio foundation
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y install --no-install-recommends \
     ffmpeg \
@@ -17,8 +17,9 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
 
 RUN pip install --upgrade pip
 
-RUN pip install torch torchaudio torchcodec numpy matplotlib scikit-learn \
-    --extra-index-url https://download.pytorch.org/whl/cpu
+RUN pip install torch torchaudio --extra-index-url https://download.pytorch.org/whl/cpu
+
+RUN pip install numpy matplotlib scikit-learn soundfile
 
 COPY . .
 
