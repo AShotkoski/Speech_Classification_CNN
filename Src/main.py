@@ -1,20 +1,51 @@
 import os
 import LibriSpeechDataset
+import torch
+import CNN
+import torch.optim as optim
 from torch.utils.data import DataLoader
+import torch.nn as nn 
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
+
+TOP_K = 50
 
 ds = LibriSpeechDataset.LibriSpeechWordDataset(
     root = os.path.join(script_dir, "../LibriSpeech"),
     splits = ["dev-clean"],
-    top_k = 1000,
+    top_k = TOP_K,
 )
 
 loader = DataLoader(ds, batch_size=4, shuffle=True, collate_fn=LibriSpeechDataset.collate_fn)
 
-features = next(iter(loader))
-print("Features shape:", features[0].shape)
-print("Labels shape:", features[1].shape)
-print(ds[features[1][1]])
 
 print(f"Dataset size: {len(ds)}")
+
+net = CNN.net(TOP_K)
+
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.SGD(net.parameters(), lr = 0.001, momentum= 0.9)
+
+for epoch in range(2):
+    running_loss = 0
+    for i, data in enumerate(loader, 0):
+        inputs, labels = data
+
+        # zero param gradients
+        optimizer.zero_grad()
+
+        outputs = net(inputs)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+
+        running_loss += loss.item()
+        if i % 2000 == 1999:
+            print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 2000:.3f}')
+            running_loss = 0.0
+print('training done')
+
+
+# Save training file params
+PATH = './training_save.pth'
+torch.save(net.state_dict(),PATH)
