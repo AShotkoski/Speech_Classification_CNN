@@ -3,5 +3,19 @@
 {
 	"name": "speechclassification",
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"image": "docker.io/mattdevries/speechclassification:latest"
+	//"image": "docker.io/mattdevries/speechclassification:latest",
+	"build" : {
+		"dockerfile": "../Dockerfile"
+	},
+
+	"customizations": {
+		"vscode": {
+		  "extensions": [
+			"ms-python.python",
+			"ms-python.vscode-pylance",
+			"ms-python.debugpy"
+		  ]
+		}
+	  }
 }
+
