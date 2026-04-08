@@ -126,11 +126,8 @@ class LibriSpeechWordDataset(Dataset):
             # Convert the soundfile NumPy array directly into a PyTorch tensor
             waveform = torch.from_numpy(data).float()
 
-            mel_spec_transform = MelSpectrogram(SAMPLE_RATE, n_mels=64)
-            mel_spec = mel_spec_transform(waveform)
-
             label = self.vocab[word]
-            return mel_spec, label
+            return waveform, label
 
     def get_vocab(self):
         return dict(self.vocab)
@@ -141,19 +138,18 @@ class LibriSpeechWordDataset(Dataset):
         raise KeyError(f"word index {idx} not in vocabulary.")
 
 def collate_fn(batch):
-    """Pad spectrograms but padding the last dimension."""
-    spectrograms, labels = zip(*batch)
+    waveforms, labels = zip(*batch)
 
-    max_time_frames = max([spec.shape[-1] for spec in spectrograms])
+    max_length = max([wave.shape[0] for wave in waveforms])
 
-    padded_spectrograms = []
-    for spec in spectrograms:
-        pad_amount = max_time_frames - spec.shape[-1]
+    padded_waveforms = []
+    for wave in waveforms:
+        pad_amount = max_length - wave.shape[0]
+        
+        padded_wave = torch.nn.functional.pad(wave, (0, pad_amount))
+        padded_waveforms.append(padded_wave)
 
-        padded_spec = torch.nn.functional.pad(spec, (0,pad_amount))
-        padded_spectrograms.append(padded_spec)
-
-    batch_spectrograms = torch.stack(padded_spectrograms)
+    batch_waveforms = torch.stack(padded_waveforms)
     batch_labels = torch.tensor(labels)
 
-    return batch_spectrograms, batch_labels
+    return batch_waveforms, batch_labels

@@ -22,6 +22,9 @@
 	  "mounts": [
 		"source=${localWorkspaceFolder}/LibriSpeech,target=/Speech_Classification_CNN/LibriSpeech,type=bind"
 	  ],
-	  "runArgs": ["--gpus", "all"]
+	  "runArgs": [
+		"--gpus", "all",
+		"--shm-size=48gb"
+	 ]
 }
 
