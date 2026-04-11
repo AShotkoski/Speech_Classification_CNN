@@ -4,7 +4,7 @@ import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader, random_split
 import torch.nn as nn
-from torchaudio.transforms import MelSpectrogram
+from torchaudio.transforms import MelSpectrogram, FrequencyMasking, TimeMasking
 import time
 from tqdm import tqdm
 
@@ -14,9 +14,10 @@ import LibriSpeechDataset
 # Config
 SAVE_PATH = './training_save.pth'
 TOP_K = 20
-BATCH_SIZE = 64
-NUM_EPOCHS = 2
-LOAD_CACHED_PARAMS = True
+BATCH_SIZE = 128
+NUM_EPOCHS = 25
+LEARNING_RATE = 1e-3
+LOAD_CACHED_PARAMS = False
 TRAIN_SPLIT = 0.8
 
 
@@ -54,10 +55,33 @@ def make_loader(dataset, num_workers, shuffle=True):
     )
 
 
+def audio_to_features(raw_audio, mel_transform, freq_mask=None, time_mask=None):
+    """Convert raw audio to normalized log-mel spectrogram, optionally with SpecAugment."""
+    mel = mel_transform(raw_audio)
+    log_mel = torch.log(mel.clamp(min=1e-6))
+
+    # Per-sample zero-mean, unit-variance normalization
+    mean = log_mel.mean(dim=(-2, -1), keepdim=True)
+    std = log_mel.std(dim=(-2, -1), keepdim=True).clamp(min=1e-4)
+    log_mel = (log_mel - mean) / std
+
+    # SpecAugment during training
+    if freq_mask is not None:
+        log_mel = freq_mask(log_mel)
+    if time_mask is not None:
+        log_mel = time_mask(log_mel)
+
+    return log_mel
+
+
 def train(net, loader, mel_transform, device):
+    net.train()
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
+    optimizer = optim.Adam(net.parameters(), lr=LEARNING_RATE)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=3, factor=0.5)
     scaler = torch.amp.GradScaler('cuda')
+    freq_mask = FrequencyMasking(freq_mask_param=8).to(device)
+    time_mask = TimeMasking(time_mask_param=20).to(device)
 
     start_time = time.time()
     for epoch in range(NUM_EPOCHS):
@@ -72,7 +96,7 @@ def train(net, loader, mel_transform, device):
             optimizer.zero_grad()
 
             with torch.amp.autocast('cuda'):
-                inputs = mel_transform(raw_audio)
+                inputs = audio_to_features(raw_audio, mel_transform, freq_mask, time_mask)
                 outputs = net(inputs)
                 loss = criterion(outputs, labels)
 
@@ -82,6 +106,9 @@ def train(net, loader, mel_transform, device):
 
             running_loss += loss.item()
             progress_bar.set_postfix({'loss': f"{running_loss / (i+1):.4f}"})
+
+        epoch_loss = running_loss / len(loader)
+        scheduler.step(epoch_loss)
 
     elapsed = time.time() - start_time
     print(f'Training done in {elapsed:.2f} seconds')
@@ -100,7 +127,7 @@ def evaluate(net, loader, mel_transform, device):
             labels = labels.to(device, non_blocking=True)
 
             with torch.amp.autocast('cuda'):
-                inputs = mel_transform(raw_audio)
+                inputs = audio_to_features(raw_audio, mel_transform)
                 outputs = net(inputs)
 
             predictions = outputs.argmax(dim=1)
