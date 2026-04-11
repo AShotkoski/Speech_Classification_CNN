@@ -18,7 +18,7 @@ RUN pip install --upgrade pip
 
 RUN pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu128
 
-RUN pip install numpy matplotlib scikit-learn soundfile
+RUN pip install numpy matplotlib scikit-learn soundfile tqdm
 
 COPY . .
 

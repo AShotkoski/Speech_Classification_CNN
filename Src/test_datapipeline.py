@@ -19,7 +19,6 @@ features, labels = next(iter(loader))
 print("Features shape:", features.shape)
 print("Labels shape:", labels.shape)
 
-
 print(f"label {[ds.word_at(label.item()) for label in labels]}")
 
 plot_labels = [ds.word_at(label.item()) for label in labels]
