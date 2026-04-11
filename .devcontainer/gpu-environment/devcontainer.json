@@ -1,9 +1,7 @@
-// For format details, see https://aka.ms/devcontainer.json. For config options, see the
-// README at: https://github.com/devcontainers/templates/tree/main/src/python
+
 {
 	"name": "speechclassification (Local GPU)",
-	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	//"image": "docker.io/mattdevries/speechclassification:latest",
+
 	"build" : {
 		"dockerfile": "./Dockerfile"
 	},
