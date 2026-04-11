@@ -15,7 +15,7 @@ import LibriSpeechDataset
 SAVE_PATH = './training_save.pth'
 TOP_K = 20
 BATCH_SIZE = 128
-NUM_EPOCHS = 25
+NUM_EPOCHS = 30
 LEARNING_RATE = 1e-3
 LOAD_CACHED_PARAMS = False
 TRAIN_SPLIT = 0.8
@@ -31,7 +31,7 @@ def load_dataset():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     ds = LibriSpeechDataset.LibriSpeechWordDataset(
         root=os.path.join(script_dir, "../LibriSpeech"),
-        splits=["dev-clean"],
+        splits=["all"],
         top_k=TOP_K,
     )
     print(f"Loaded {len(ds)} dataset entries.")
@@ -78,7 +78,7 @@ def train(net, loader, mel_transform, device):
     net.train()
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(net.parameters(), lr=LEARNING_RATE)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=3, factor=0.5)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS)
     scaler = torch.amp.GradScaler('cuda')
     freq_mask = FrequencyMasking(freq_mask_param=8).to(device)
     time_mask = TimeMasking(time_mask_param=20).to(device)
@@ -107,8 +107,7 @@ def train(net, loader, mel_transform, device):
             running_loss += loss.item()
             progress_bar.set_postfix({'loss': f"{running_loss / (i+1):.4f}"})
 
-        epoch_loss = running_loss / len(loader)
-        scheduler.step(epoch_loss)
+        scheduler.step()
 
     elapsed = time.time() - start_time
     print(f'Training done in {elapsed:.2f} seconds')

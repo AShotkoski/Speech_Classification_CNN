@@ -9,24 +9,22 @@ class net(nn.Module):
     def __init__(self, num_classes, dropout=0.3):
         super(net, self).__init__()
 
-        # Conv1: 64 filters, 20(time) x 8(freq), no padding to match paper
-        self.conv1 = nn.Conv2d(1, 64, kernel_size=(20, 8))
-        self.bn1 = nn.BatchNorm2d(64)
+        # Conv1: 128 filters, 20(time) x 8(freq)
+        self.conv1 = nn.Conv2d(1, 128, kernel_size=(20, 8))
+        self.bn1 = nn.BatchNorm2d(128)
 
         # Frequency-domain max pooling with pool width 3
         self.pool = nn.MaxPool2d(kernel_size=(1, 3))
 
-        # Conv2: 64 filters, 10(time) x 4(freq)
-        self.conv2 = nn.Conv2d(64, 64, kernel_size=(10, 4))
-        self.bn2 = nn.BatchNorm2d(64)
+        # Conv2: 128 filters, 10(time) x 4(freq)
+        self.conv2 = nn.Conv2d(128, 128, kernel_size=(10, 4))
+        self.bn2 = nn.BatchNorm2d(128)
 
-        # Classifier: low-rank linear -> DNN -> softmax
-        # Flatten dim is computed dynamically in forward()
-        self.flatten = nn.Flatten()
+        # Classifier head
         self.dropout = nn.Dropout(dropout)
-        self.linear = nn.Linear(64, 32)  # low-rank bottleneck
-        self.dnn = nn.Linear(32, 128)
-        self.output = nn.Linear(128, num_classes)
+        self.linear = nn.Linear(128, 128)
+        self.dnn = nn.Linear(128, 256)
+        self.output = nn.Linear(256, num_classes)
 
     def forward(self, x):
         # (B, n_mels, T) -> (B, 1, n_mels, T)
