@@ -14,11 +14,12 @@ import LibriSpeechDataset
 # Config
 SAVE_PATH = './training_save.pth'
 TOP_K = 20
-BATCH_SIZE = 128
+BATCH_SIZE = 256
 NUM_EPOCHS = 30
 LEARNING_RATE = 1e-3
 LOAD_CACHED_PARAMS = False
 TRAIN_SPLIT = 0.8
+NUM_PREFETCH = 4
 
 
 def get_device():
@@ -31,7 +32,7 @@ def load_dataset():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     ds = LibriSpeechDataset.LibriSpeechWordDataset(
         root=os.path.join(script_dir, "../LibriSpeech"),
-        splits=["all"],
+        splits=["train-clean-100"],
         top_k=TOP_K,
     )
     print(f"Loaded {len(ds)} dataset entries.")
@@ -52,6 +53,8 @@ def make_loader(dataset, num_workers, shuffle=True):
         collate_fn=LibriSpeechDataset.collate_fn,
         num_workers=num_workers,
         pin_memory=True,
+        persistent_workers=num_workers > 0,
+        prefetch_factor=NUM_PREFETCH if num_workers > 0 else None,
     )
 
 
@@ -142,11 +145,15 @@ def main():
     device = get_device()
     num_workers = max(1, multiprocessing.cpu_count() - 2)
 
+    # Autotuning for conv layers — big win for fixed-size inputs
+    torch.backends.cudnn.benchmark = True
+
     ds = load_dataset()
     train_ds, test_ds = split_dataset(ds)
     print(f"Train: {len(train_ds)}, Test: {len(test_ds)}")
 
     net = CNN.net(TOP_K).to(device)
+    net = torch.compile(net)
     mel_transform = MelSpectrogram(sample_rate=ds.sample_rate, n_mels=64).to(device)
 
     # Load cached params or train from scratch
