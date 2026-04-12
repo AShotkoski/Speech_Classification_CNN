@@ -2,45 +2,75 @@ import torch
 import torch.nn as nn
 
 
+import torch.nn.functional as F
+
+class ResBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, stride=1):
+        super(ResBlock, self).__init__()
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+        
+        self.shortcut = nn.Sequential()
+        if stride != 1 or in_channels != out_channels:
+            self.shortcut = nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm2d(out_channels)
+            )
+
+    def forward(self, x):
+        out = F.relu(self.bn1(self.conv1(x)))
+        out = self.bn2(self.conv2(out))
+        out += self.shortcut(x)
+        out = F.relu(out)
+        return out
+
+
 class net(nn.Module):
-    """cnn-trad-fpool3 from Sainath & Parada (2015)
-    'Convolutional Neural Networks for Small-footprint Keyword Spotting'
     """
-    def __init__(self, num_classes, dropout=0.3):
+    Deep Residual CNN designed specifically for Audio Spectrograms.
+    Similar to a ResNet-18
+    """
+    def __init__(self, num_classes, dropout=0.5):
         super(net, self).__init__()
-
-        # Conv1: 128 filters, 20(time) x 8(freq)
-        self.conv1 = nn.Conv2d(1, 128, kernel_size=(20, 8))
-        self.bn1 = nn.BatchNorm2d(128)
-
-        # Frequency-domain max pooling with pool width 3
-        self.pool = nn.MaxPool2d(kernel_size=(1, 3))
-
-        # Conv2: 128 filters, 10(time) x 4(freq)
-        self.conv2 = nn.Conv2d(128, 128, kernel_size=(10, 4))
-        self.bn2 = nn.BatchNorm2d(128)
-
-        # Classifier head
+        
+        # 1-channel input (spectrogram), mapping to 64 feature maps
+        self.prep = nn.Sequential(
+            nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        )
+        
+        # Sequential Residual Blocks
+        self.layer1 = self._make_layer(64, 64, stride=1)      # -> 64 filters
+        self.layer2 = self._make_layer(64, 128, stride=2)     # -> 128 filters
+        self.layer3 = self._make_layer(128, 256, stride=2)    # -> 256 filters
+        self.layer4 = self._make_layer(256, 512, stride=2)    # -> 512 filters
+        
         self.dropout = nn.Dropout(dropout)
-        self.linear = nn.Linear(128, 128)
-        self.dnn = nn.Linear(128, 256)
-        self.output = nn.Linear(256, num_classes)
+        self.fc = nn.Linear(512, num_classes)
+
+    def _make_layer(self, in_c, out_c, stride):
+        return nn.Sequential(
+            ResBlock(in_c, out_c, stride),
+            ResBlock(out_c, out_c, 1)
+        )
 
     def forward(self, x):
         # (B, n_mels, T) -> (B, 1, n_mels, T)
         x = x.unsqueeze(1)
-
-        x = torch.relu(self.bn1(self.conv1(x)))
-        x = self.pool(x)
-
-        x = torch.relu(self.bn2(self.conv2(x)))
-
-        # Global average pool over remaining spatial dims to handle variable sizes
+            
+        x = self.prep(x)
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+        
+        # Global Average Pooling collapses the H and W (mel and time) dimensions perfectly
         x = x.mean(dim=(-2, -1))
-
+        
         x = self.dropout(x)
-        x = torch.relu(self.linear(x))
-        x = self.dropout(x)
-        x = torch.relu(self.dnn(x))
-        x = self.output(x)
+        x = self.fc(x)
         return x

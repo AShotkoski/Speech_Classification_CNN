@@ -15,8 +15,8 @@ import LibriSpeechDataset
 SAVE_PATH = './training_save.pth'
 TOP_K = 20
 BATCH_SIZE = 256
-NUM_EPOCHS = 30
-LEARNING_RATE = 1e-3
+NUM_EPOCHS = 20
+LEARNING_RATE = 5e-3
 LOAD_CACHED_PARAMS = False
 TRAIN_SPLIT = 0.8
 NUM_PREFETCH = 4
@@ -79,9 +79,9 @@ def audio_to_features(raw_audio, mel_transform, freq_mask=None, time_mask=None):
 
 def train(net, loader, mel_transform, device):
     net.train()
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(net.parameters(), lr=LEARNING_RATE)
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS)
+    criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
+    optimizer = optim.AdamW(net.parameters(), lr=LEARNING_RATE, weight_decay=1e-2)
+    scheduler = optim.lr_scheduler.OneCycleLR(optimizer, max_lr=LEARNING_RATE, steps_per_epoch=len(loader), epochs=NUM_EPOCHS)
     scaler = torch.amp.GradScaler('cuda')
     freq_mask = FrequencyMasking(freq_mask_param=8).to(device)
     time_mask = TimeMasking(time_mask_param=20).to(device)
@@ -96,7 +96,7 @@ def train(net, loader, mel_transform, device):
             raw_audio = raw_audio.to(device, non_blocking=True)
             labels = labels.to(device, non_blocking=True)
 
-            optimizer.zero_grad()
+            optimizer.zero_grad(set_to_none=True)
 
             with torch.amp.autocast('cuda'):
                 inputs = audio_to_features(raw_audio, mel_transform, freq_mask, time_mask)
@@ -106,11 +106,12 @@ def train(net, loader, mel_transform, device):
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
+            
+            # OneCycleLR steps per batch, not per epoch
+            scheduler.step()
 
             running_loss += loss.item()
             progress_bar.set_postfix({'loss': f"{running_loss / (i+1):.4f}"})
-
-        scheduler.step()
 
     elapsed = time.time() - start_time
     print(f'Training done in {elapsed:.2f} seconds')
@@ -145,7 +146,7 @@ def main():
     device = get_device()
     num_workers = max(1, multiprocessing.cpu_count() - 2)
 
-    # Autotuning for conv layers — big win for fixed-size inputs
+    # Autotuning for conv layers
     torch.backends.cudnn.benchmark = True
 
     ds = load_dataset()

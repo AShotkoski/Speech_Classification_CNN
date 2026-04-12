@@ -140,13 +140,19 @@ class LibriSpeechWordDataset(Dataset):
 def collate_fn(batch):
     waveforms, labels = zip(*batch)
 
-    max_length = max([wave.shape[0] for wave in waveforms])
+    # Pad or truncate to exactly 1 second (16000 samples)
+    # This provides torch.compile with a static shape, preventing it 
+    # from constantly recompiling the graph overhead when the batch max length changed.
+    target_length = 16000
 
     padded_waveforms = []
     for wave in waveforms:
-        pad_amount = max_length - wave.shape[0]
-        
-        padded_wave = torch.nn.functional.pad(wave, (0, pad_amount))
+        if wave.shape[0] < target_length:
+            pad_amount = target_length - wave.shape[0]
+            padded_wave = torch.nn.functional.pad(wave, (0, pad_amount))
+        else:
+            # Truncate if longer than 1 second
+            padded_wave = wave[:target_length]
         padded_waveforms.append(padded_wave)
 
     batch_waveforms = torch.stack(padded_waveforms)
