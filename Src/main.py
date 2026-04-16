@@ -13,13 +13,13 @@ import LibriSpeechDataset
 
 # Config
 SAVE_PATH = './training_save.pth'
-TOP_K = 20
-BATCH_SIZE = 256
-NUM_EPOCHS = 20
-LEARNING_RATE = 5e-3
+TOP_K = 250
+BATCH_SIZE = 2048
+NUM_EPOCHS = 200
+LEARNING_RATE = 0.04
 LOAD_CACHED_PARAMS = False
 TRAIN_SPLIT = 0.8
-NUM_PREFETCH = 4
+NUM_PREFETCH = 8
 
 
 def get_device():
@@ -32,7 +32,7 @@ def load_dataset():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     ds = LibriSpeechDataset.LibriSpeechWordDataset(
         root=os.path.join(script_dir, "../LibriSpeech"),
-        splits=["train-clean-100"],
+        splits=["train-clean-100", "test-clean","dev-clean"],
         top_k=TOP_K,
     )
     print(f"Loaded {len(ds)} dataset entries.")
@@ -80,8 +80,28 @@ def audio_to_features(raw_audio, mel_transform, freq_mask=None, time_mask=None):
 def train(net, loader, mel_transform, device):
     net.train()
     criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
-    optimizer = optim.AdamW(net.parameters(), lr=LEARNING_RATE, weight_decay=1e-2)
-    scheduler = optim.lr_scheduler.OneCycleLR(optimizer, max_lr=LEARNING_RATE, steps_per_epoch=len(loader), epochs=NUM_EPOCHS)
+    #optimizer = optim.AdamW(net.parameters(), lr=LEARNING_RATE, weight_decay=1e-2)
+    #scheduler = optim.lr_scheduler.OneCycleLR(optimizer, max_lr=LEARNING_RATE, steps_per_epoch=len(loader), epochs=NUM_EPOCHS)
+    bn_params = [p for n, p in net.named_parameters() if 'bn' in n]
+    other_params = [p for n, p in net.named_parameters() if 'bn' not in n]
+    
+    optimizer = optim.RMSprop([
+        {'params': bn_params, 'weight_decay': 0.0},
+        {'params': other_params, 'weight_decay': 1e-5}
+    ], lr=LEARNING_RATE, momentum=0.9,alpha=0.9,eps=1e-3)
+    
+    warmup_epochs = 32
+    warmup_scheduler = optim.lr_scheduler.LinearLR(
+        optimizer, start_factor=0.01, total_iters=warmup_epochs
+    )
+    cosine_scheduler = optim.lr_scheduler.CosineAnnealingLR(
+        optimizer, T_max=(NUM_EPOCHS - warmup_epochs)
+    )
+    scheduler = optim.lr_scheduler.SequentialLR(
+        optimizer, 
+        schedulers=[warmup_scheduler, cosine_scheduler], 
+        milestones=[warmup_epochs]
+    )
     scaler = torch.amp.GradScaler('cuda')
     freq_mask = FrequencyMasking(freq_mask_param=8).to(device)
     time_mask = TimeMasking(time_mask_param=20).to(device)
@@ -105,13 +125,14 @@ def train(net, loader, mel_transform, device):
 
             scaler.scale(loss).backward()
             scaler.step(optimizer)
+
             scaler.update()
             
-            # OneCycleLR steps per batch, not per epoch
-            scheduler.step()
-
+            
             running_loss += loss.item()
             progress_bar.set_postfix({'loss': f"{running_loss / (i+1):.4f}"})
+
+        scheduler.step()
 
     elapsed = time.time() - start_time
     print(f'Training done in {elapsed:.2f} seconds')

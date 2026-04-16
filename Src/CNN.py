@@ -1,76 +1,35 @@
 import torch
 import torch.nn as nn
-
-
-import torch.nn.functional as F
-
-class ResBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, stride=1):
-        super(ResBlock, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(out_channels)
-        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(out_channels)
-        
-        self.shortcut = nn.Sequential()
-        if stride != 1 or in_channels != out_channels:
-            self.shortcut = nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False),
-                nn.BatchNorm2d(out_channels)
-            )
-
-    def forward(self, x):
-        out = F.relu(self.bn1(self.conv1(x)))
-        out = self.bn2(self.conv2(out))
-        out += self.shortcut(x)
-        out = F.relu(out)
-        return out
-
+import torchvision.models as models
 
 class net(nn.Module):
-    """
-    Deep Residual CNN designed specifically for Audio Spectrograms.
-    Similar to a ResNet-18
-    """
     def __init__(self, num_classes, dropout=0.5):
         super(net, self).__init__()
         
-        # 1-channel input (spectrogram), mapping to 64 feature maps
-        self.prep = nn.Sequential(
-            nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False),
-            nn.BatchNorm2d(64),
-            nn.ReLU(),
-            nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        # Initialize EfficientNet B0 architecture
+        self.model = models.efficientnet_b0(weights=None)
+        
+        # Modify the first Convolutional Layer to accept 1 channel (for spectrograms) instead of 3
+        # The first layer in torchvision's EfficientNet is located at features[0][0]
+        original_conv = self.model.features[0][0]
+        self.model.features[0][0] = nn.Conv2d(
+            in_channels=1, 
+            out_channels=original_conv.out_channels, 
+            kernel_size=original_conv.kernel_size, 
+            stride=original_conv.stride, 
+            padding=original_conv.padding, 
+            bias=(original_conv.bias is not None)
         )
         
-        # Sequential Residual Blocks
-        self.layer1 = self._make_layer(64, 64, stride=1)      # -> 64 filters
-        self.layer2 = self._make_layer(64, 128, stride=2)     # -> 128 filters
-        self.layer3 = self._make_layer(128, 256, stride=2)    # -> 256 filters
-        self.layer4 = self._make_layer(256, 512, stride=2)    # -> 512 filters
-        
-        self.dropout = nn.Dropout(dropout)
-        self.fc = nn.Linear(512, num_classes)
-
-    def _make_layer(self, in_c, out_c, stride):
-        return nn.Sequential(
-            ResBlock(in_c, out_c, stride),
-            ResBlock(out_c, out_c, 1)
+        # Modify the classifier to match the target number of classes and specify dropout
+        in_features = self.model.classifier[1].in_features
+        self.model.classifier = nn.Sequential(
+            nn.Dropout(p=dropout, inplace=True),
+            nn.Linear(in_features, num_classes)
         )
 
     def forward(self, x):
-        # (B, n_mels, T) -> (B, 1, n_mels, T)
+        # Unsqueeze the channel dimension to treat spectrogram sequences as 1-channel data if needed
         x = x.unsqueeze(1)
-            
-        x = self.prep(x)
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
-        
-        # Global Average Pooling collapses the H and W (mel and time) dimensions perfectly
-        x = x.mean(dim=(-2, -1))
-        
-        x = self.dropout(x)
-        x = self.fc(x)
+        x = self.model(x)
         return x

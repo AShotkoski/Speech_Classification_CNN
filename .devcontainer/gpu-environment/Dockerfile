@@ -16,7 +16,7 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
 
 RUN pip install --upgrade pip
 
-RUN pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu128
+RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
 
 RUN pip install numpy matplotlib scikit-learn soundfile tqdm
 
