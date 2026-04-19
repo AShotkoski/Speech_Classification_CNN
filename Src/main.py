@@ -12,12 +12,13 @@ import CNN
 import LibriSpeechDataset
 
 # Config
-SAVE_PATH = './training_save.pth'
+SAVE_PATH = './training_save_TC100_TC_DC_91acc.pth'
+SPLITS = ["train-clean-100", "test-clean","dev-clean"]
 TOP_K = 250
 BATCH_SIZE = 2048
 NUM_EPOCHS = 200
 LEARNING_RATE = 0.04
-LOAD_CACHED_PARAMS = False
+LOAD_CACHED_PARAMS = True
 TRAIN_SPLIT = 0.8
 NUM_PREFETCH = 8
 
@@ -32,7 +33,7 @@ def load_dataset():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     ds = LibriSpeechDataset.LibriSpeechWordDataset(
         root=os.path.join(script_dir, "../LibriSpeech"),
-        splits=["train-clean-100", "test-clean","dev-clean"],
+        splits=SPLITS,
         top_k=TOP_K,
     )
     print(f"Loaded {len(ds)} dataset entries.")
@@ -173,6 +174,9 @@ def main():
     ds = load_dataset()
     train_ds, test_ds = split_dataset(ds)
     print(f"Train: {len(train_ds)}, Test: {len(test_ds)}")
+
+    # ds.dump_vocab('./wordcounts.txt', include_counts=True)
+    # return()
 
     net = CNN.net(TOP_K).to(device)
     net = torch.compile(net)

@@ -100,6 +100,9 @@ class LibriSpeechWordDataset(Dataset):
             if word in allowed
         }
 
+        # Keep word counts around for diagnostic dumps
+        self.word_counts = {w: word_counter[w] for w in self.vocab}
+
         # Filter entries to only include words in the vocabulary
         self.entries = [
             (path, start, end, word)
@@ -136,6 +139,17 @@ class LibriSpeechWordDataset(Dataset):
             if word_idx == idx:
                 return word
         raise KeyError(f"word index {idx} not in vocabulary.")
+
+    def dump_vocab(self, filepath, include_counts=False):
+        """Write the vocabulary to a text file sorted by index."""
+        idx_to_word = sorted(self.vocab.items(), key=lambda x: x[1])
+        with open(filepath, "w") as f:
+            for word, idx in idx_to_word:
+                if include_counts:
+                    f.write(f"{word}\t{idx}\t{self.word_counts[word]}\n")
+                else:
+                    f.write(f"{word}\t{idx}\n")
+        print(f"Vocabulary written to {filepath}")
 
 def collate_fn(batch):
     waveforms, labels = zip(*batch)
